@@ -1,0 +1,9 @@
+{"id":1,"name":"Chocoramo","brand":{"id":1},"category": {"id":1}}
+{"id":2,"name":"Barra de Chocoramo","brand":  {"id":1},"category": {"id":1}}
+{"id":3,"name":"Gansito","brand": {"id":1},"category": {"id":1}}
+
+{"id":1,"name":"Ramo SA","picture":""}
+{"id":2,"name":"Noel","picture":""}
+
+{"id":1,"parent":-1,"name":"Mercado"}
+{"id":2,"parent":-1,"name":"Bebidas"}
