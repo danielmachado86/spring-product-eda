@@ -46,3 +46,7 @@ message Product {
   }
   Status status = 6;
 }
+
+message ProductResponse {
+  repeated Product products  = 1;
+}

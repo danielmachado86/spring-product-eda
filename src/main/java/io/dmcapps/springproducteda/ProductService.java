@@ -1,35 +1,22 @@
 package io.dmcapps.springproducteda;
 
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.state.QueryableStoreTypes;
-import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.event.EventListener;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
@@ -48,98 +35,145 @@ class ProductService {
     private static final String INPUT_PRODUCTS_TOPIC = "in-products";
     private static final String PRODUCTS_TOPIC = "products";
     private static final String PRODUCTS_STORE = "products-store";
+    private static final String INPUT_BRANDS_TOPIC = "in-brands";
     private static final String BRANDS_TOPIC = "brands";
     private static final String BRANDS_STORE = "brands-store";
+    private static final String INPUT_CATEGORIES_TOPIC = "in-categories";
     private static final String CATEGORIES_TOPIC = "categories";
     private static final String CATEGORIES_STORE = "categories-store";
-    
+
     @Value("${spring.kafka.properties.schema.registry.url}")
     String srUrl;
 
     @Bean
+    public NewTopic inputCategoriesTopic() {
+        return new NewTopic(INPUT_CATEGORIES_TOPIC, 1, (short) 1);
+    }
+
+    @Bean
+    public NewTopic categoriesTopic() {
+        return new NewTopic(CATEGORIES_TOPIC, 1, (short) 1);
+    }
+
+    @Bean
+    public NewTopic inputBrandsTopic() {
+        return new NewTopic(INPUT_BRANDS_TOPIC, 1, (short) 1);
+    }
+
+    @Bean
+    public NewTopic BrandsTopic() {
+        return new NewTopic(BRANDS_TOPIC, 1, (short) 1);
+    }
+
+    @Bean
     public NewTopic inputProductsTopic() {
-        return new NewTopic(INPUT_PRODUCTS_TOPIC, 3, (short) 1);
+        return new NewTopic(INPUT_PRODUCTS_TOPIC, 1, (short) 1);
     }
 
     @Bean
     public NewTopic productsTopic() {
-        return new NewTopic(PRODUCTS_TOPIC, 3, (short) 1);
+        return new NewTopic(PRODUCTS_TOPIC, 1, (short) 1);
     }
 
     @Autowired
     public void process(StreamsBuilder builder, StreamsBuilderFactoryBean streamsBuilderFB) {
+        KafkaProtobufSerde<Category> specificCategoryProto = specificCategoryProto();
+        KafkaProtobufSerde<Brand> specificBrandProto = specificBrandProto();
+        KafkaProtobufSerde<Product> specificProductProto = specificProductProto();
+
+        KTable<String, Category> categoriesTable = builder
+            .table(CATEGORIES_TOPIC, Consumed.with(Serdes.String(), specificCategoryProto));
         
-        builder.
-            stream(BRANDS_TOPIC, Consumed.with(specificBrandProto(), specificBrandProto()))
-            .toTable(Materialized.as(BRANDS_STORE));
+        KTable<String, Brand> brandsTable = builder
+            .table(BRANDS_TOPIC, Consumed.with(Serdes.String(), specificBrandProto));
+        
+        KTable<String, Product> productsTable = builder
+            .table(PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto));
+            
         builder
-            .stream(CATEGORIES_TOPIC, Consumed.with(specificCategoryProto(), specificCategoryProto()))
-            .toTable(Materialized.as(CATEGORIES_STORE));
+            .stream(INPUT_CATEGORIES_TOPIC, Consumed.with(Serdes.String(), specificCategoryProto))
+            .selectKey(
+                (key, value) -> value.getName() + ":" + value.getParent()
+            )
+            .leftJoin(categoriesTable, (newCategory, existingCategory) -> {
+                if (existingCategory == null){
+                    return newCategory;
+                }
+                return existingCategory;
+            })
+            .filter((key, value) -> value.getStatus() == io.dmcapps.proto.Category.Status.PENDING)
+            .map((key, category) -> {
+                io.dmcapps.proto.Category.Builder categoryBuilder = category.toBuilder();  
 
+                categoryBuilder.setStatus(io.dmcapps.proto.Category.Status.CREATED);
+                return new KeyValue<>(key, categoryBuilder.build());
+            })
+            .to(CATEGORIES_TOPIC, Produced.with(Serdes.String(), specificCategoryProto));
         
-        StoreQueryParameters<ReadOnlyKeyValueStore<Product, Product>> productsStoreQueryParam = StoreQueryParameters
-        .fromNameAndType(PRODUCTS_STORE, QueryableStoreTypes.keyValueStore());
+        
+        builder
+            .stream(INPUT_BRANDS_TOPIC, Consumed.with(Serdes.String(), specificBrandProto))
+            .selectKey((key, value) -> value.getName())
+            .leftJoin(brandsTable, (newBrand, existingBrand) -> {
+                if (existingBrand == null){
+                    return newBrand;
+                }
+                return existingBrand;
+            })
+            .filter((key, value) -> value.getStatus() == io.dmcapps.proto.Brand.Status.PENDING)
+            .map((key, brand) -> {
+                
+                io.dmcapps.proto.Brand.Builder brandBuilder = brand.toBuilder();  
+                
+                brandBuilder.setStatus(io.dmcapps.proto.Brand.Status.CREATED);
+                
+                return new KeyValue<>(key, brandBuilder.build());
+            })
+            .to(BRANDS_TOPIC, Produced.with(Serdes.String(), specificBrandProto));
+        
 
-        
-        StoreQueryParameters<ReadOnlyKeyValueStore<Brand, Brand>> brandsStoreQueryParam = StoreQueryParameters
-        .fromNameAndType(BRANDS_STORE, QueryableStoreTypes.keyValueStore());
+        builder
+            .stream(INPUT_PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto))
+            .selectKey((key, value) -> value.getBrand().getName())
+            .join(brandsTable, (product, brand) -> 
+                product.toBuilder().setBrand(brand).build()
+            )
+            .selectKey((key, value) -> value.getCategory().getName() + ":" + value.getCategory().getParent())
+            .join(categoriesTable, (product, category) ->
+                product.toBuilder().setCategory(category).build()
+            )
+            .selectKey(
+                (key, value) -> {
 
-        
-        StoreQueryParameters<ReadOnlyKeyValueStore<Category, Category>> categoriesStoreQueryParam = StoreQueryParameters
-        .fromNameAndType(CATEGORIES_STORE, QueryableStoreTypes.keyValueStore());
-        
-        
-        KStream<Product, Product> inputProductsStream = builder
-            .stream(INPUT_PRODUCTS_TOPIC, Consumed.with(specificProto(), specificProto()));
+                    String seed = value.getName() + ":" + value.getBrand().getName();
 
-        KStream<Product, Product> validatedProductsStream = inputProductsStream
+                    return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8)).toString();
+
+                }
+            )
+            .leftJoin(productsTable, (newProduct, existingProduct) -> {
+                if (existingProduct == null){
+                    return newProduct;
+                }
+                return existingProduct;
+            })
+            .filter((key, value) -> value.getStatus() == Status.PENDING)
             .map((key, product) -> {
                 log.info(product.toString());
-                Builder productBuilder = product.toBuilder();
+                Builder productBuilder = product.toBuilder();  
 
-                ReadOnlyKeyValueStore<Product, Product> productsStore = streamsBuilderFB
-                    .getKafkaStreams()
-                    .store(productsStoreQueryParam);
-                
-                Product productKey = Product.newBuilder().setName(product.getName()).setBrand(product.getBrand()).build();
-                Product storedProduct = productsStore.get(productKey);
-                
-                ReadOnlyKeyValueStore<Brand, Brand> brandsStore = streamsBuilderFB
-                    .getKafkaStreams()
-                    .store(brandsStoreQueryParam);
-                Brand brandKey = Brand.newBuilder().setName(product.getBrand().getName()).build();
-                Brand storedBrand = brandsStore.get(brandKey);
+                String seed = product.getName() + ":" + product.getBrand().getName();
+                final String uuid = UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8)).toString();
 
-                ReadOnlyKeyValueStore<Category, Category> categoriesStore = streamsBuilderFB
-                    .getKafkaStreams()
-                    .store(categoriesStoreQueryParam);
-                Category categoryKey = Category.newBuilder().setName(product.getCategory().getName()).setParent(product.getCategory().getParent()).build();
-                Category storedCategory = categoriesStore.get(categoryKey);
+                productBuilder.setId(uuid).setStatus(Status.CREATED);
 
+                return new KeyValue<>(key, productBuilder.build());
 
-                if (storedBrand == null || storedCategory == null || storedProduct == null){
-                    productBuilder.setStatus(Status.REJECTED);
-                    return new KeyValue<>(productKey, productBuilder.build());
-                }
-                
-                if (storedProduct.getStatus() == Status.PENDING || storedProduct.getStatus() == Status.REJECTED) {
-                    String seed = product.getName()+product.getBrand().getName();
-                    final String uuid = UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8)).toString();
-                    productBuilder.setId(uuid).setStatus(Status.CREATED);
-                    return new KeyValue<>(productKey, productBuilder.build());
-                }
-                if (storedProduct.getStatus() == Status.CREATED || storedProduct.getStatus() == Status.UPDATED) {
-                    productBuilder.setStatus(Status.UPDATED);
-                    return new KeyValue<>(productKey, productBuilder.build());
-                }
-                return new KeyValue<>(productKey, productBuilder.build());
-
-            });
-        validatedProductsStream.to(PRODUCTS_TOPIC, Produced.with(specificProto(), specificProto()));
-        validatedProductsStream.toTable(Materialized.as(PRODUCTS_STORE));
+            })
+            .to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
     }
 
-    private KafkaProtobufSerde<Product> specificProto() {
+    private KafkaProtobufSerde<Product> specificProductProto() {
 
         final Map<String, String> config = Map.of(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
 
@@ -166,45 +200,4 @@ class ProductService {
         return kafkaProtobufSerde;
     }
 
-}
-
-@Component
-class TestProductProducer {
-
-  private final KafkaTemplate<Product, Product> kafkaTemplate;
-
-  @Autowired
-  TestProductProducer(KafkaTemplate<Product, Product> kafkaTemplate) {
-    this.kafkaTemplate = kafkaTemplate;
-  }
-
-
-  @EventListener(ApplicationStartedEvent.class)
-  public void produceMovies() {
-
-    final Brand brand1 = Brand.newBuilder().setName("Ramo").build();
-    final Brand brand2 = Brand.newBuilder().setName("Noel").build();
-    
-    final Category category1 = Category.newBuilder().setName("Postres").setParent("").build();
-    final Category category2 = Category.newBuilder().setName("Dulces").setParent("").build();
-
-    final Product message1= Product.newBuilder().setName("Chocoramo").setBrand(brand1).setCategory(category1).setStatus(Status.PENDING).build();
-    final Product message2 = Product.newBuilder().setName("Barra de Chocoramo").setBrand(brand1).setCategory(category1).setStatus(Status.PENDING).build();
-    final Product message3 = Product.newBuilder().setName("Gansito").setBrand(brand1).setCategory(category1).setStatus(Status.PENDING).build();
-    final Product message4 = Product.newBuilder().setName("Caramelos").setBrand(brand2).setCategory(category2).setStatus(Status.PENDING).build();
-
-    Stream.of(message1, message2, message3, message4).forEach(product -> kafkaTemplate.send("in-products", product));
-
-  }
-}
-
-@Component
-class TestProductConsumer {
-
-  private static final Logger log = LoggerFactory.getLogger(TestProductConsumer.class);
-
-  @KafkaListener(topics = { "products" }, groupId = "products_listener")
-  public void consume(ConsumerRecord<Product, Product> record) {
-    log.info(record.value().toString());
-  }
 }
