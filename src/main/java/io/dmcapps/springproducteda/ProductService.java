@@ -9,6 +9,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Produced;
 import org.slf4j.Logger;
@@ -102,11 +103,11 @@ class ProductService {
                 return existingCategory;
             })
             .filter((key, value) -> value.getStatus() == io.dmcapps.proto.Category.Status.PENDING)
-            .map((key, category) -> {
+            .mapValues(category -> {
                 io.dmcapps.proto.Category.Builder categoryBuilder = category.toBuilder();  
 
                 categoryBuilder.setStatus(io.dmcapps.proto.Category.Status.CREATED);
-                return new KeyValue<>(key, categoryBuilder.build());
+                return categoryBuilder.build();
             })
             .to(CATEGORIES_TOPIC, Produced.with(Serdes.String(), specificCategoryProto));
         
@@ -121,18 +122,18 @@ class ProductService {
                 return existingBrand;
             })
             .filter((key, value) -> value.getStatus() == io.dmcapps.proto.Brand.Status.PENDING)
-            .map((key, brand) -> {
+            .mapValues(brand -> {
                 
                 io.dmcapps.proto.Brand.Builder brandBuilder = brand.toBuilder();  
                 
                 brandBuilder.setStatus(io.dmcapps.proto.Brand.Status.CREATED);
                 
-                return new KeyValue<>(key, brandBuilder.build());
+                return brandBuilder.build();
             })
             .to(BRANDS_TOPIC, Produced.with(Serdes.String(), specificBrandProto));
         
 
-        builder
+        KStream<String, Product> inputProducts = builder
             .stream(INPUT_PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto))
             .selectKey((key, value) -> value.getBrand().getName())
             .join(brandsTable, (product, brand) -> 
@@ -141,24 +142,49 @@ class ProductService {
             .selectKey((key, value) -> value.getCategory().getName() + ":" + value.getCategory().getParent())
             .join(categoriesTable, (product, category) ->
                 product.toBuilder().setCategory(category).build()
+            );
+            
+        KStream<String, Product> updateProducts = inputProducts
+            .selectKey(
+                (key, value) -> value.getId()
             )
+            .leftJoin(productsTable, (newProduct, existingProduct) -> {
+                if (existingProduct == null){
+                    return newProduct.toBuilder().setStatus(Status.REJECTED).build();
+                }
+                return newProduct;
+            })
+            .filter((key, value) -> value.getStatus() == Status.PENDING)
+            .mapValues(product -> {
+                log.info("Update: ");
+                log.info(product.toString());
+                Builder productBuilder = product.toBuilder();  
+                
+                productBuilder.setStatus(Status.UPDATED);
+                
+                return productBuilder.build();
+                
+            });
+            
+            KStream<String, Product> createProducts = inputProducts
             .selectKey(
                 (key, value) -> {
 
                     String seed = value.getName() + ":" + value.getBrand().getName();
-
+                    
                     return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8)).toString();
-
+                    
                 }
             )
             .leftJoin(productsTable, (newProduct, existingProduct) -> {
                 if (existingProduct == null){
                     return newProduct;
                 }
-                return existingProduct;
+                return newProduct.toBuilder().setStatus(Status.REJECTED).build();
             })
             .filter((key, value) -> value.getStatus() == Status.PENDING)
-            .map((key, product) -> {
+            .mapValues(product -> {
+                log.info("Create: ");
                 log.info(product.toString());
                 Builder productBuilder = product.toBuilder();  
 
@@ -167,10 +193,12 @@ class ProductService {
 
                 productBuilder.setId(uuid).setStatus(Status.CREATED);
 
-                return new KeyValue<>(key, productBuilder.build());
+                return productBuilder.build();
 
-            })
-            .to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
+            });
+            
+            createProducts.to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
+            updateProducts.to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
     }
 
     private KafkaProtobufSerde<Product> specificProductProto() {

@@ -5,6 +5,8 @@ import java.util.List;
 
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,15 +24,17 @@ import io.dmcapps.proto.ProductResponse.Builder;;
 @CrossOrigin
 public class ProductController {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductController.class);
+
+
     @Autowired
     ProductStreamManager productStreamManager;
 
     @PostMapping("/products")
     public Product addProduct(@RequestBody Product productRequest) {
-        // System.out.println(productRequest);
         Product product = productRequest.toBuilder().setStatus(Status.PENDING).build();
         productStreamManager.produce(product);
-
+        log.info("Request:\n" + product.toString());
         return product;
     }
 

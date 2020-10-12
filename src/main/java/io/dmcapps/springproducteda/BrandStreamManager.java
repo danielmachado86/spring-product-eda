@@ -13,6 +13,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import io.dmcapps.proto.Brand;
+import io.dmcapps.proto.Brand.Status;
 
 
 
@@ -47,8 +48,8 @@ class TestBrandProducer {
 
   @EventListener(ApplicationStartedEvent.class)
   public void produceMovies() {
-    final Brand message1= Brand.newBuilder().setName("Ramo").build();
-    final Brand message2 = Brand.newBuilder().setName("Noel").build();
+    final Brand message1= Brand.newBuilder().setName("Ramo").setStatus(Status.PENDING).build();
+    final Brand message2 = Brand.newBuilder().setName("Noel").setStatus(Status.PENDING).build();
 
     Stream.of(message1, message2).forEach(brand -> kafkaTemplate.send("in-brands", brand));
 

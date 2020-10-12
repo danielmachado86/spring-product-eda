@@ -11,10 +11,11 @@ message Category {
   string parent = 2;
   string name = 3;
   enum Status {
-    PENDING = 0;
-    CREATED = 1;
-    UPDATED = 2;
-    REJECTED = 3;
+    UNKNOWN = 0;
+    PENDING = 1;
+    CREATED = 2;
+    UPDATED = 3;
+    REJECTED = 4;
   }
   Status status = 4;
 }
@@ -24,10 +25,11 @@ message Brand {
   string name = 2;
   string picture = 3;
   enum Status {
-    PENDING = 0;
-    CREATED = 1;
-    UPDATED = 2;
-    REJECTED = 3;
+    UNKNOWN = 0;
+    PENDING = 1;
+    CREATED = 2;
+    UPDATED = 3;
+    REJECTED = 4;
   }
   Status status = 4;
 }
@@ -39,10 +41,11 @@ message Product {
   Category category = 4;
   string picture = 5;
   enum Status {
-    PENDING = 0;
-    CREATED = 1;
-    UPDATED = 2;
-    REJECTED = 3;
+    UNKNOWN = 0;
+    PENDING = 1;
+    CREATED = 2;
+    UPDATED = 3;
+    REJECTED = 4;
   }
   Status status = 6;
 }

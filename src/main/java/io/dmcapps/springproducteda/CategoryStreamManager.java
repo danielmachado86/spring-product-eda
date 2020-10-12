@@ -13,6 +13,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import io.dmcapps.proto.Category;
+import io.dmcapps.proto.Category.Status;
 
 
 
@@ -45,10 +46,10 @@ class TestCategoryProducer {
 
   @EventListener(ApplicationStartedEvent.class)
   public void produceMovies() {
-    final Category message1= Category.newBuilder().setName("Postres").setParent("").build();
-    final Category message2 = Category.newBuilder().setName("Dulces").setParent("").build();
-    final Category message3 = Category.newBuilder().setName("Tortas").setParent("Postres").build();
-    final Category message4 = Category.newBuilder().setName("Limpieza").setParent("").build();
+    final Category message1= Category.newBuilder().setName("Postres").setParent("").setStatus(Status.PENDING).build();
+    final Category message2 = Category.newBuilder().setName("Dulces").setParent("").setStatus(Status.PENDING).build();
+    final Category message3 = Category.newBuilder().setName("Tortas").setParent("Postres").setStatus(Status.PENDING).build();
+    final Category message4 = Category.newBuilder().setName("Limpieza").setParent("").setStatus(Status.PENDING).build();
 
     Stream.of(message1, message2, message3, message4).forEach(category -> kafkaTemplate.send("in-categories", category));
 
