@@ -12,15 +12,13 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import io.dmcapps.proto.Brand;
-import io.dmcapps.proto.Brand.Status;
+import io.dmcapps.proto.catalog.Brand;
+import io.dmcapps.proto.catalog.Brand.Status;
 
 
 
 @Component
 class BrandStreamManager {
-
-    private static final Logger log = LoggerFactory.getLogger(BrandStreamManager.class);
 
     private final KafkaTemplate<String, Brand> kafkaTemplate;
 
@@ -59,10 +57,10 @@ class TestBrandProducer {
 @Component
 class TestBrandConsumer {
 
-  private static final Logger log = LoggerFactory.getLogger(Consumer.class);
+  private static final Logger log = LoggerFactory.getLogger(TestBrandConsumer.class);
 
   @KafkaListener(topics = { "brands" }, groupId = "brands_listener")
   public void consume(ConsumerRecord<String, Brand> record) {
-    log.info(record.value().toString());
+    log.info("Brand: {}", record.value());
   }
 }

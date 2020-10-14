@@ -12,8 +12,8 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import io.dmcapps.proto.Category;
-import io.dmcapps.proto.Category.Status;
+import io.dmcapps.proto.catalog.Category;
+import io.dmcapps.proto.catalog.Category.Status;
 
 
 
@@ -57,12 +57,12 @@ class TestCategoryProducer {
 }
 
 @Component
-class Consumer {
+class TestCategoryConsumer {
 
-  private static final Logger log = LoggerFactory.getLogger(Consumer.class);
+  private static final Logger log = LoggerFactory.getLogger(TestCategoryConsumer.class);
 
   @KafkaListener(topics = { "categories" }, groupId = "categories_listener")
   public void consume(ConsumerRecord<String, Category> record) {
-    log.info(record.value().toString());
+    log.info("Category: {}", record.value());
   }
 }

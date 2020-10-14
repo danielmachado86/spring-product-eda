@@ -6,11 +6,11 @@ import java.util.UUID;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +22,11 @@ import org.springframework.stereotype.Component;
 
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.streams.serdes.protobuf.KafkaProtobufSerde;
-import io.dmcapps.proto.Brand;
-import io.dmcapps.proto.Category;
-import io.dmcapps.proto.Product;
-import io.dmcapps.proto.Product.Builder;
-import io.dmcapps.proto.Product.Status;
+import io.dmcapps.proto.catalog.Brand;
+import io.dmcapps.proto.catalog.Category;
+import io.dmcapps.proto.catalog.Product;
+import io.dmcapps.proto.catalog.Product.Builder;
+import io.dmcapps.proto.catalog.Product.Status;
 
 @Component
 class ProductService {
@@ -38,10 +38,8 @@ class ProductService {
     private static final String PRODUCTS_STORE = "products-store";
     private static final String INPUT_BRANDS_TOPIC = "in-brands";
     private static final String BRANDS_TOPIC = "brands";
-    private static final String BRANDS_STORE = "brands-store";
     private static final String INPUT_CATEGORIES_TOPIC = "in-categories";
     private static final String CATEGORIES_TOPIC = "categories";
-    private static final String CATEGORIES_STORE = "categories-store";
 
     @Value("${spring.kafka.properties.schema.registry.url}")
     String srUrl;
@@ -62,7 +60,7 @@ class ProductService {
     }
 
     @Bean
-    public NewTopic BrandsTopic() {
+    public NewTopic brandsTopic() {
         return new NewTopic(BRANDS_TOPIC, 1, (short) 1);
     }
 
@@ -89,7 +87,7 @@ class ProductService {
             .table(BRANDS_TOPIC, Consumed.with(Serdes.String(), specificBrandProto));
         
         KTable<String, Product> productsTable = builder
-            .table(PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto));
+            .table(PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto), Materialized.as(PRODUCTS_STORE));
             
         builder
             .stream(INPUT_CATEGORIES_TOPIC, Consumed.with(Serdes.String(), specificCategoryProto))
@@ -102,11 +100,11 @@ class ProductService {
                 }
                 return existingCategory;
             })
-            .filter((key, value) -> value.getStatus() == io.dmcapps.proto.Category.Status.PENDING)
+            .filter((key, value) -> value.getStatus() == io.dmcapps.proto.catalog.Category.Status.PENDING)
             .mapValues(category -> {
-                io.dmcapps.proto.Category.Builder categoryBuilder = category.toBuilder();  
+                io.dmcapps.proto.catalog.Category.Builder categoryBuilder = category.toBuilder();  
 
-                categoryBuilder.setStatus(io.dmcapps.proto.Category.Status.CREATED);
+                categoryBuilder.setStatus(io.dmcapps.proto.catalog.Category.Status.CREATED);
                 return categoryBuilder.build();
             })
             .to(CATEGORIES_TOPIC, Produced.with(Serdes.String(), specificCategoryProto));
@@ -121,12 +119,12 @@ class ProductService {
                 }
                 return existingBrand;
             })
-            .filter((key, value) -> value.getStatus() == io.dmcapps.proto.Brand.Status.PENDING)
+            .filter((key, value) -> value.getStatus() == io.dmcapps.proto.catalog.Brand.Status.PENDING)
             .mapValues(brand -> {
                 
-                io.dmcapps.proto.Brand.Builder brandBuilder = brand.toBuilder();  
+                io.dmcapps.proto.catalog.Brand.Builder brandBuilder = brand.toBuilder();  
                 
-                brandBuilder.setStatus(io.dmcapps.proto.Brand.Status.CREATED);
+                brandBuilder.setStatus(io.dmcapps.proto.catalog.Brand.Status.CREATED);
                 
                 return brandBuilder.build();
             })
@@ -166,7 +164,7 @@ class ProductService {
                 
             });
             
-            KStream<String, Product> createProducts = inputProducts
+        KStream<String, Product> createProducts = inputProducts
             .selectKey(
                 (key, value) -> {
 

@@ -19,10 +19,10 @@ import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import io.dmcapps.proto.Brand;
-import io.dmcapps.proto.Category;
-import io.dmcapps.proto.Product;
-import io.dmcapps.proto.Product.Status;
+import io.dmcapps.proto.catalog.Brand;
+import io.dmcapps.proto.catalog.Category;
+import io.dmcapps.proto.catalog.Product;
+import io.dmcapps.proto.catalog.Product.Status;
 
 @Component
 class ProductStreamManager {
@@ -30,7 +30,6 @@ class ProductStreamManager {
     @Value("${spring.kafka.properties.schema.registry.url}")
     String srUrl;
 
-    private static final String PRODUCTS_TOPIC = "products";
     private static final String PRODUCTS_STORE = "products-store";
 
     private final KafkaTemplate<String, Product> kafkaTemplate;
@@ -103,6 +102,6 @@ class TestProductConsumer {
 
   @KafkaListener(topics = { "products" }, groupId = "products_listener")
   public void consume(ConsumerRecord<String, Product> record) {
-    log.info(record.value().toString());
+    log.info("Product: {}", record.value());
   }
 }
