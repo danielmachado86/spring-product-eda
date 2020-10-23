@@ -3,19 +3,12 @@ package io.dmcapps.springproducteda;
 import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.streams.StoreQueryParameters;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.errors.InvalidStateStoreException;
-import org.apache.kafka.streams.state.QueryableStoreTypes;
-import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -27,40 +20,19 @@ import io.dmcapps.proto.catalog.Product.Status;
 @Component
 class ProductStreamManager {
 
-    @Value("${spring.kafka.properties.schema.registry.url}")
-    String srUrl;
-
-    private static final String PRODUCTS_STORE = "products-store";
-
     private final KafkaTemplate<String, Product> kafkaTemplate;
-
-    @Autowired
-    StreamsBuilder builder;
-
-    @Autowired
-    StreamsBuilderFactoryBean streamsBuilderFB;
 
     @Autowired
     ProductStreamManager(KafkaTemplate<String, Product> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void produce(Product product) {
-        kafkaTemplate.send("in-products", product);
+    public void produce(String key, Product product) {
+        kafkaTemplate.send("in-products", key, product);
     }
 
-    public ReadOnlyKeyValueStore<String, Product> getProductStore() {
-        
-        StoreQueryParameters<ReadOnlyKeyValueStore<String, Product>> productsStoreQueryParam = StoreQueryParameters
-        .fromNameAndType(PRODUCTS_STORE, QueryableStoreTypes.keyValueStore());
-        
-        while (true) {
-            try {
-                return streamsBuilderFB.getKafkaStreams().store(productsStoreQueryParam);
-            } catch (InvalidStateStoreException e) {
-                // ignore, store not ready yet
-            }
-        }
+    public void produce(Product product) {
+        kafkaTemplate.send("in-products", null, product);
     }
 
 }

@@ -131,8 +131,11 @@ class ProductService {
             .to(BRANDS_TOPIC, Produced.with(Serdes.String(), specificBrandProto));
         
 
-        KStream<String, Product> inputProducts = builder
-            .stream(INPUT_PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto))
+        KStream<String, Product> inputStream = builder
+            .stream(INPUT_PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto));
+
+            KStream<String, Product> inputProducts = inputStream
+            .filter((key, value) -> value != null)
             .selectKey((key, value) -> value.getBrand().getName())
             .join(brandsTable, (product, brand) -> 
                 product.toBuilder().setBrand(brand).build()
@@ -195,8 +198,12 @@ class ProductService {
 
             });
             
-            createProducts.to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
-            updateProducts.to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
+        KStream<String, Product> deleteProducts = inputStream
+            .filter((key, value) -> value == null && key != null);
+
+        createProducts.to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
+        updateProducts.to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
+        deleteProducts.to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
     }
 
     private KafkaProtobufSerde<Product> specificProductProto() {
