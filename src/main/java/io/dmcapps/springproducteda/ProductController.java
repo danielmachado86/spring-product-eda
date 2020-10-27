@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import io.dmcapps.proto.catalog.Product;
 import io.dmcapps.proto.catalog.Product.Status;
 
-@RestController(value = "/products")
+@RestController
 @CrossOrigin
 public class ProductController {
 
@@ -27,7 +27,7 @@ public class ProductController {
     @Autowired
     ProductStreamManager productStreamManager;
 
-    @PostMapping
+    @PostMapping("/products")
     public @ResponseBody ResponseEntity<Product> addProduct(@RequestBody Product productRequest) {
         io.dmcapps.proto.catalog.Product.Builder productBuilder = productRequest.toBuilder();
         if (!productRequest.getId().isEmpty()) {
@@ -39,7 +39,7 @@ public class ProductController {
         return new ResponseEntity<>(product, HttpStatus.OK);
     }
     
-    @PutMapping(value = "/{id}")
+    @PutMapping("/products/{id}")
     public @ResponseBody ResponseEntity<Product> updateProduct(@RequestBody Product productRequest, @PathVariable String id) {
         io.dmcapps.proto.catalog.Product.Builder productBuilder = productRequest.toBuilder();
         Product product = productBuilder.setId(id).setStatus(Status.PENDING).build();
@@ -48,7 +48,7 @@ public class ProductController {
         return new ResponseEntity<>(product, HttpStatus.OK);
     }
     
-    @DeleteMapping(value = "/{id}")
+    @DeleteMapping("/products/{id}")
     public @ResponseBody ResponseEntity<Product> deleteProduct(@PathVariable String id) {
         io.dmcapps.proto.catalog.Product.Builder productBuilder = io.dmcapps.proto.catalog.Product.newBuilder();
         Product product = productBuilder.setId(id).setStatus(Status.PENDING).build();
