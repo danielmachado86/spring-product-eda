@@ -44,6 +44,12 @@ class ProductService {
     @Value("${spring.kafka.properties.schema.registry.url}")
     String srUrl;
 
+    @Value("${spring.kafka.properties.basic.auth.credentials.source}")
+    String srCredentialSource;
+
+    @Value("${spring.kafka.properties.schema.registry.basic.auth.user.info}")
+    String srAuthUserInfo;
+
     @Bean
     public NewTopic inputCategoriesTopic() {
         return new NewTopic(INPUT_CATEGORIES_TOPIC, 1, (short) 3);
@@ -209,6 +215,8 @@ class ProductService {
     private KafkaProtobufSerde<Product> specificProductProto() {
 
         final Map<String, String> config = Map.of(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
+        config.put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, srCredentialSource);
+        config.put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, srAuthUserInfo);
 
         final KafkaProtobufSerde<Product> kafkaProtobufSerde = new KafkaProtobufSerde<>(Product.class);
         kafkaProtobufSerde.configure(config, false);
@@ -218,6 +226,8 @@ class ProductService {
     private KafkaProtobufSerde<Brand> specificBrandProto() {
 
         final Map<String, String> config = Map.of(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
+        config.put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, srCredentialSource);
+        config.put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, srAuthUserInfo);
 
         final KafkaProtobufSerde<Brand> kafkaProtobufSerde = new KafkaProtobufSerde<>(Brand.class);
         kafkaProtobufSerde.configure(config, false);
@@ -227,6 +237,8 @@ class ProductService {
     private KafkaProtobufSerde<Category> specificCategoryProto() {
 
         final Map<String, String> config = Map.of(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
+        config.put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, srCredentialSource);
+        config.put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, srAuthUserInfo);
 
         final KafkaProtobufSerde<Category> kafkaProtobufSerde = new KafkaProtobufSerde<>(Category.class);
         kafkaProtobufSerde.configure(config, false);
