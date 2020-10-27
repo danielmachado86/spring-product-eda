@@ -1,6 +1,7 @@
 package io.dmcapps.springproducteda;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -10,7 +11,6 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +35,6 @@ class ProductService {
 
     private static final String INPUT_PRODUCTS_TOPIC = "in-products";
     private static final String PRODUCTS_TOPIC = "products";
-    private static final String PRODUCTS_STORE = "products-store";
     private static final String INPUT_BRANDS_TOPIC = "in-brands";
     private static final String BRANDS_TOPIC = "brands";
     private static final String INPUT_CATEGORIES_TOPIC = "in-categories";
@@ -214,18 +213,22 @@ class ProductService {
 
     private KafkaProtobufSerde<Product> specificProductProto() {
 
-        final Map<String, String> config = Map.of(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
+        final Map<String, String> config = new HashMap<>();
+        config.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
         config.put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, srCredentialSource);
         config.put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, srAuthUserInfo);
 
         final KafkaProtobufSerde<Product> kafkaProtobufSerde = new KafkaProtobufSerde<>(Product.class);
         kafkaProtobufSerde.configure(config, false);
+        // kafkaProtobufSerde.configure(Map.of(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, srCredentialSource), false);
+        // kafkaProtobufSerde.configure(Map.of(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, srAuthUserInfo), false);
         return kafkaProtobufSerde;
     }
 
     private KafkaProtobufSerde<Brand> specificBrandProto() {
 
-        final Map<String, String> config = Map.of(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
+        final Map<String, String> config = new HashMap<>();
+        config.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
         config.put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, srCredentialSource);
         config.put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, srAuthUserInfo);
 
@@ -236,7 +239,8 @@ class ProductService {
 
     private KafkaProtobufSerde<Category> specificCategoryProto() {
 
-        final Map<String, String> config = Map.of(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
+        final Map<String, String> config = new HashMap<>();
+        config.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, srUrl);
         config.put(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, srCredentialSource);
         config.put(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, srAuthUserInfo);
 
