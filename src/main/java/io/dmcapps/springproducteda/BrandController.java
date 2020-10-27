@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import io.dmcapps.proto.catalog.Brand;
 import io.dmcapps.proto.catalog.Brand.Status;
 
-@RestController(value = "/brands")
+@RestController
 @CrossOrigin
 public class BrandController {
 
@@ -27,7 +27,7 @@ public class BrandController {
     @Autowired
     BrandStreamManager brandStreamManager;
 
-    @PostMapping
+    @PostMapping("/brands")
     public @ResponseBody ResponseEntity<Brand> addBrand(@RequestBody Brand productRequest) {
         io.dmcapps.proto.catalog.Brand.Builder brandBuilder = productRequest.toBuilder();
         Brand brand = brandBuilder.setStatus(Status.PENDING).build();
@@ -36,7 +36,7 @@ public class BrandController {
         return new ResponseEntity<>(brand, HttpStatus.OK);
     }
     
-    @PutMapping(value = "/{name}")
+    @PutMapping("/brands/{name}")
     public @ResponseBody ResponseEntity<Brand> updateBrand(@RequestBody Brand brandRequest, @PathVariable String name) {
         io.dmcapps.proto.catalog.Brand.Builder brandBuilder = brandRequest.toBuilder();
         Brand brand = brandBuilder.setName(name).setStatus(Status.PENDING).build();
@@ -45,7 +45,7 @@ public class BrandController {
         return new ResponseEntity<>(brand, HttpStatus.OK);
     }
     
-    @DeleteMapping(value = "/{name}")
+    @DeleteMapping("/brands/{name}")
     public @ResponseBody ResponseEntity<Brand> deleteBrand(@PathVariable String name) {
         io.dmcapps.proto.catalog.Brand.Builder brandBuilder = io.dmcapps.proto.catalog.Brand.newBuilder();
         Brand brand = brandBuilder.setName(name).setStatus(Status.PENDING).build();
