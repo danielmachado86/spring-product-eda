@@ -46,32 +46,32 @@ class ProductService {
 
     @Bean
     public NewTopic inputCategoriesTopic() {
-        return new NewTopic(INPUT_CATEGORIES_TOPIC, 1, (short) 1);
+        return new NewTopic(INPUT_CATEGORIES_TOPIC, 1, (short) 3);
     }
 
     @Bean
     public NewTopic categoriesTopic() {
-        return new NewTopic(CATEGORIES_TOPIC, 1, (short) 1);
+        return new NewTopic(CATEGORIES_TOPIC, 1, (short) 3);
     }
 
     @Bean
     public NewTopic inputBrandsTopic() {
-        return new NewTopic(INPUT_BRANDS_TOPIC, 1, (short) 1);
+        return new NewTopic(INPUT_BRANDS_TOPIC, 1, (short) 3);
     }
 
     @Bean
     public NewTopic brandsTopic() {
-        return new NewTopic(BRANDS_TOPIC, 1, (short) 1);
+        return new NewTopic(BRANDS_TOPIC, 1, (short) 3);
     }
 
     @Bean
     public NewTopic inputProductsTopic() {
-        return new NewTopic(INPUT_PRODUCTS_TOPIC, 1, (short) 1);
+        return new NewTopic(INPUT_PRODUCTS_TOPIC, 1, (short) 3);
     }
 
     @Bean
     public NewTopic productsTopic() {
-        return new NewTopic(PRODUCTS_TOPIC, 1, (short) 1);
+        return new NewTopic(PRODUCTS_TOPIC, 1, (short) 3);
     }
 
     @Autowired
@@ -87,7 +87,7 @@ class ProductService {
             .table(BRANDS_TOPIC, Consumed.with(Serdes.String(), specificBrandProto));
         
         KTable<String, Product> productsTable = builder
-            .table(PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto), Materialized.as(PRODUCTS_STORE));
+            .table(PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto));
             
         builder
             .stream(INPUT_CATEGORIES_TOPIC, Consumed.with(Serdes.String(), specificCategoryProto))
