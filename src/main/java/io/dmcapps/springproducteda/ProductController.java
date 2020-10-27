@@ -6,17 +6,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.dmcapps.proto.catalog.Product;
 import io.dmcapps.proto.catalog.Product.Status;
 
-@RestController()
+@RestController(value = "/products")
 @CrossOrigin
 public class ProductController {
 
@@ -26,34 +27,34 @@ public class ProductController {
     @Autowired
     ProductStreamManager productStreamManager;
 
-    @RequestMapping(value = "/products", method = RequestMethod.POST)
+    @PostMapping
     public @ResponseBody ResponseEntity<Product> addProduct(@RequestBody Product productRequest) {
         io.dmcapps.proto.catalog.Product.Builder productBuilder = productRequest.toBuilder();
         if (!productRequest.getId().isEmpty()) {
-            return new ResponseEntity<Product>(productBuilder.setStatus(Status.REJECTED).build(), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(productBuilder.setStatus(Status.REJECTED).build(), HttpStatus.BAD_REQUEST);
         }
         Product product = productBuilder.setStatus(Status.PENDING).build();
-        productStreamManager.produce(product);
+        productStreamManager.produce(product.getId(), product);
         log.info("POST Request: {}", product);
-        return new ResponseEntity<Product>(product, HttpStatus.OK);
+        return new ResponseEntity<>(product, HttpStatus.OK);
     }
     
-    @RequestMapping(value = "/products/{id}", method = RequestMethod.PUT)
+    @PutMapping(value = "/{id}")
     public @ResponseBody ResponseEntity<Product> updateProduct(@RequestBody Product productRequest, @PathVariable String id) {
         io.dmcapps.proto.catalog.Product.Builder productBuilder = productRequest.toBuilder();
         Product product = productBuilder.setId(id).setStatus(Status.PENDING).build();
-        productStreamManager.produce(product);
+        productStreamManager.produce(product.getId(), product);
         log.info("PUT Request: {}", product);
-        return new ResponseEntity<Product>(product, HttpStatus.OK);
+        return new ResponseEntity<>(product, HttpStatus.OK);
     }
     
-    @RequestMapping(value = "/products/{id}", method = RequestMethod.DELETE)
+    @DeleteMapping(value = "/{id}")
     public @ResponseBody ResponseEntity<Product> deleteProduct(@PathVariable String id) {
         io.dmcapps.proto.catalog.Product.Builder productBuilder = io.dmcapps.proto.catalog.Product.newBuilder();
         Product product = productBuilder.setId(id).setStatus(Status.PENDING).build();
-        productStreamManager.produce(id, null);
+        productStreamManager.produce(id);
         log.info("DELETE Request: {}", id);
-        return new ResponseEntity<Product>(product, HttpStatus.OK);
+        return new ResponseEntity<>(product, HttpStatus.OK);
     }
 
 }

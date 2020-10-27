@@ -20,28 +20,35 @@ import io.dmcapps.proto.catalog.Brand.Status;
 @Component
 class BrandStreamManager {
 
+    private static final String INPUT_BRANDS_TOPIC = "in-brands";
+    
     private final KafkaTemplate<String, Brand> kafkaTemplate;
-
+    
     @Autowired
     BrandStreamManager(KafkaTemplate<String, Brand> kafkaTemplate) {
-        this.kafkaTemplate = kafkaTemplate;
+      this.kafkaTemplate = kafkaTemplate;
+    }
+    
+    public void produce(String key) {
+      kafkaTemplate.send(INPUT_BRANDS_TOPIC, key, null);
     }
 
-
-    public void produce(Brand brand) {
-        kafkaTemplate.send("in-brands", brand);
+    public void produce(String key, Brand brand) {
+      kafkaTemplate.send(INPUT_BRANDS_TOPIC, key, brand);
     }
+    
+  }
+  
+  @Component
+  class TestBrandProducer {
 
-}
-
-@Component
-class TestBrandProducer {
-
-  private final KafkaTemplate<String, Brand> kafkaTemplate;
-
-  @Autowired
-  TestBrandProducer(KafkaTemplate<String, Brand> kafkaTemplate) {
-    this.kafkaTemplate = kafkaTemplate;
+    private static final String INPUT_BRANDS_TOPIC = "in-brands";
+    
+    private final KafkaTemplate<String, Brand> kafkaTemplate;
+    
+    @Autowired
+    TestBrandProducer(KafkaTemplate<String, Brand> kafkaTemplate) {
+      this.kafkaTemplate = kafkaTemplate;
   }
 
   @EventListener(ApplicationStartedEvent.class)
@@ -49,7 +56,7 @@ class TestBrandProducer {
     final Brand message1= Brand.newBuilder().setName("Ramo").setStatus(Status.PENDING).build();
     final Brand message2 = Brand.newBuilder().setName("Noel").setStatus(Status.PENDING).build();
 
-    Stream.of(message1, message2).forEach(brand -> kafkaTemplate.send("in-brands", brand));
+    Stream.of(message1, message2).forEach(brand -> kafkaTemplate.send(INPUT_BRANDS_TOPIC, brand));
 
   }
 }

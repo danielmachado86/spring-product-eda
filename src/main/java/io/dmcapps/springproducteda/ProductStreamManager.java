@@ -20,27 +20,32 @@ import io.dmcapps.proto.catalog.Product.Status;
 @Component
 class ProductStreamManager {
 
+    private static final String INPUT_PRODUCTS_TOPIC = "in-products";
+    
+    
     private final KafkaTemplate<String, Product> kafkaTemplate;
-
+    
     @Autowired
     ProductStreamManager(KafkaTemplate<String, Product> kafkaTemplate) {
-        this.kafkaTemplate = kafkaTemplate;
+      this.kafkaTemplate = kafkaTemplate;
     }
-
+    
+    public void produce(String key) {
+      kafkaTemplate.send(INPUT_PRODUCTS_TOPIC, key, null);
+    }
+    
     public void produce(String key, Product product) {
-        kafkaTemplate.send("in-products", key, product);
+      kafkaTemplate.send(INPUT_PRODUCTS_TOPIC, key, product);
     }
-
-    public void produce(Product product) {
-        kafkaTemplate.send("in-products", null, product);
-    }
-
-}
-
-@Component
-class TestProductProducer {
-
-  private final KafkaTemplate<String, Product> kafkaTemplate;
+    
+  }
+  
+  @Component
+  class TestProductProducer {
+    
+    private static final String INPUT_PRODUCTS_TOPIC = "in-products";
+    
+    private final KafkaTemplate<String, Product> kafkaTemplate;
 
   @Autowired
   TestProductProducer(KafkaTemplate<String, Product> kafkaTemplate) {
@@ -62,7 +67,7 @@ class TestProductProducer {
     final Product message3 = Product.newBuilder().setName("Gansito").setBrand(brand1).setCategory(category1).setStatus(Status.PENDING).build();
     final Product message4 = Product.newBuilder().setName("Caramelos").setBrand(brand2).setCategory(category2).setStatus(Status.PENDING).build();
 
-    Stream.of(message1, message2, message3, message4).forEach(product -> kafkaTemplate.send("in-products", product));
+    Stream.of(message1, message2, message3, message4).forEach(product -> kafkaTemplate.send(INPUT_PRODUCTS_TOPIC, product));
 
   }
 }
