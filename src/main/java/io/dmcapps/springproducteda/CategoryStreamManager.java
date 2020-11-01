@@ -20,6 +20,9 @@ import io.dmcapps.proto.catalog.Category.Status;
 @Component
 class CategoryStreamManager {
 
+    private static final String INPUT_CATEGORIES_TOPIC = "in-categories";
+
+
     private final KafkaTemplate<String, Category> kafkaTemplate;
 
     @Autowired
@@ -28,8 +31,12 @@ class CategoryStreamManager {
     }
 
 
-    public void produce(Category category) {
-        kafkaTemplate.send("in-categories", category);
+    public void produce(String key) {
+      kafkaTemplate.send(INPUT_CATEGORIES_TOPIC, key, null);
+    }
+
+    public void produce(String key, Category category) {
+      kafkaTemplate.send(INPUT_CATEGORIES_TOPIC, key, category);
     }
 
 }
