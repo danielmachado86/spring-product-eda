@@ -1,0 +1,72 @@
+DELETE /categories/parent/Mercado/name/Harinas HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Accept: application/json
+
+###
+
+POST /brands HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Accept: application/json
+Content-Length: 68
+
+// {
+//     "name": "Haz de oros"
+// }
+{
+    "name": "Tostao"
+}
+
+###
+
+POST /categories HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Accept: application/json
+Content-Length: 117
+
+{
+    "name": "Harinas",
+    "parent": "Mercado"
+}
+// {
+//     "name": "Café",
+//     "parent": "Mercado"
+// }
+
+###
+
+POST /products HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Accept: application/json
+Content-Length: 492
+
+{
+    // "id": "14ad4030-f8b5-33e4-a6f6-aff650a1ec9f",
+    "name": "Harina de trigo x 5Kg",
+    "brand": {
+        "name": "Haz de oros"
+    },
+    "category": {
+        "name": "Harinas",
+        "parent": "Mercado"
+    }
+}
+// {
+//     // "id": "14ad4030-f8b5-33e4-a6f6-aff650a1ec9f",
+//     "name": "Cafe molido x 1 lb",
+//     "brand": {
+//         "name": "Tostao"
+//     },
+//     "category": {
+//         "name": "Café",
+//         "parent": "Mercado"
+//     }
+// }
+
+###
+
+DELETE /products/44c2f9fe-6af6-3731-90a2-dbd17fd8a12e HTTP/1.1
+Host: localhost:8080
