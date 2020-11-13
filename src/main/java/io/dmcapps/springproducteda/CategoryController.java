@@ -48,7 +48,7 @@ public class CategoryController {
     public @ResponseBody ResponseEntity<Category> deleteCategory(@PathVariable String parent, @PathVariable String name) {
         io.dmcapps.proto.catalog.Category.Builder categoryBuilder = io.dmcapps.proto.catalog.Category.newBuilder();
         Category category = categoryBuilder.setName(name).setParent(parent).setStatus(Status.PENDING).build();
-        categoryStreamManager.produce(name);
+        categoryStreamManager.produce(name + ":" + parent);
         log.info("DELETE Request: {}", name);
         return new ResponseEntity<>(category, HttpStatus.OK);
     }

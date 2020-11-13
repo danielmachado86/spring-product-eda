@@ -94,8 +94,12 @@ class ProductService {
         KTable<String, Product> productsTable = builder
             .table(PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto));
             
-        builder
-            .stream(INPUT_CATEGORIES_TOPIC, Consumed.with(Serdes.String(), specificCategoryProto))
+        KStream<String, Category> inputCategoriesStream = builder
+            .stream(INPUT_CATEGORIES_TOPIC, Consumed.with(Serdes.String(), specificCategoryProto));
+
+
+        KStream<String, Category> inputCategories = inputCategoriesStream
+            .filter((key, value) -> value != null)
             .selectKey(
                 (key, value) -> value.getName() + ":" + value.getParent()
             )
@@ -104,15 +108,22 @@ class ProductService {
                     return newCategory;
                 }
                 return existingCategory;
-            })
+            });
+
+        KStream<String, Category> createCategory = inputCategories
             .filter((key, value) -> value.getStatus() == io.dmcapps.proto.catalog.Category.Status.PENDING)
             .mapValues(category -> {
                 io.dmcapps.proto.catalog.Category.Builder categoryBuilder = category.toBuilder();  
 
                 categoryBuilder.setStatus(io.dmcapps.proto.catalog.Category.Status.CREATED);
                 return categoryBuilder.build();
-            })
-            .to(CATEGORIES_TOPIC, Produced.with(Serdes.String(), specificCategoryProto));
+            });
+        
+        KStream<String, Category> deleteCategory = inputCategoriesStream
+            .filter((key, value) -> value == null && key != null);
+
+        createCategory.to(CATEGORIES_TOPIC, Produced.with(Serdes.String(), specificCategoryProto));
+        deleteCategory.to(CATEGORIES_TOPIC, Produced.with(Serdes.String(), specificCategoryProto));
         
         
         builder
@@ -136,10 +147,10 @@ class ProductService {
             .to(BRANDS_TOPIC, Produced.with(Serdes.String(), specificBrandProto));
         
 
-        KStream<String, Product> inputStream = builder
+        KStream<String, Product> inputProductsStream = builder
             .stream(INPUT_PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto));
 
-            KStream<String, Product> inputProducts = inputStream
+            KStream<String, Product> inputProducts = inputProductsStream
             .filter((key, value) -> value != null)
             .selectKey((key, value) -> value.getBrand().getName())
             .join(brandsTable, (product, brand) -> 
@@ -203,7 +214,7 @@ class ProductService {
 
             });
             
-        KStream<String, Product> deleteProducts = inputStream
+        KStream<String, Product> deleteProducts = inputProductsStream
             .filter((key, value) -> value == null && key != null);
 
         createProducts.to(PRODUCTS_TOPIC, Produced.with(Serdes.String(), specificProductProto));
@@ -220,8 +231,6 @@ class ProductService {
 
         final KafkaProtobufSerde<Product> kafkaProtobufSerde = new KafkaProtobufSerde<>(Product.class);
         kafkaProtobufSerde.configure(config, false);
-        // kafkaProtobufSerde.configure(Map.of(AbstractKafkaSchemaSerDeConfig.BASIC_AUTH_CREDENTIALS_SOURCE, srCredentialSource), false);
-        // kafkaProtobufSerde.configure(Map.of(AbstractKafkaSchemaSerDeConfig.USER_INFO_CONFIG, srAuthUserInfo), false);
         return kafkaProtobufSerde;
     }
 
