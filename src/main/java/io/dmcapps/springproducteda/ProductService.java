@@ -9,6 +9,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.ForeachAction;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Produced;
@@ -104,9 +105,12 @@ class ProductService {
                 (key, value) -> value.getName() + ":" + value.getParent()
             )
             .leftJoin(categoriesTable, (newCategory, existingCategory) -> {
+                log.info("Checking category records...");
                 if (existingCategory == null){
+                    log.info("Category doesn't exists...");
                     return newCategory;
                 }
+                log.info("Category exists...");
                 return existingCategory;
             });
 
@@ -116,41 +120,63 @@ class ProductService {
                 io.dmcapps.proto.catalog.Category.Builder categoryBuilder = category.toBuilder();  
 
                 categoryBuilder.setStatus(io.dmcapps.proto.catalog.Category.Status.CREATED);
-                return categoryBuilder.build();
+
+                Category newCategory = categoryBuilder.build();
+                log.info("Category CREATED: ");
+                log.info(newCategory.toString());
+                return newCategory;
             });
         
         KStream<String, Category> deleteCategory = inputCategoriesStream
-            .filter((key, value) -> value == null && key != null);
+            .filter((key, value) -> value == null && key != null)
+            .peek((key, value) -> log.info(String.format("Category DELETED: %s", key)));
 
         createCategory.to(CATEGORIES_TOPIC, Produced.with(Serdes.String(), specificCategoryProto));
         deleteCategory.to(CATEGORIES_TOPIC, Produced.with(Serdes.String(), specificCategoryProto));
         
         
-        builder
-            .stream(INPUT_BRANDS_TOPIC, Consumed.with(Serdes.String(), specificBrandProto))
+        KStream<String, Brand> inputBrandsStream = builder
+            .stream(INPUT_BRANDS_TOPIC, Consumed.with(Serdes.String(), specificBrandProto));
+
+        KStream<String, Brand> inputBrands = inputBrandsStream
+            .filter((key, value) -> value != null)
             .selectKey((key, value) -> value.getName())
             .leftJoin(brandsTable, (newBrand, existingBrand) -> {
+                log.info("Checking brand records...");
                 if (existingBrand == null){
+                    log.info("Brand doesn't exists...");
                     return newBrand;
                 }
+                log.info("Brand exists...");
                 return existingBrand;
-            })
-            .filter((key, value) -> value.getStatus() == io.dmcapps.proto.catalog.Brand.Status.PENDING)
+            });
+            
+        KStream<String, Brand> createBrand = inputBrands.filter((key, value) -> value.getStatus() == io.dmcapps.proto.catalog.Brand.Status.PENDING)
+            .filter((key, value) -> value != null)
             .mapValues(brand -> {
                 
                 io.dmcapps.proto.catalog.Brand.Builder brandBuilder = brand.toBuilder();  
                 
                 brandBuilder.setStatus(io.dmcapps.proto.catalog.Brand.Status.CREATED);
                 
-                return brandBuilder.build();
-            })
-            .to(BRANDS_TOPIC, Produced.with(Serdes.String(), specificBrandProto));
+                Brand newBrand = brandBuilder.build();
+                log.info("Brand CREATED: ");
+                log.info(newBrand.toString());
+                
+                return newBrand;
+            });
         
+        KStream<String, Brand> deleteBrand = inputBrandsStream
+            .filter((key, value) -> value == null && key != null)
+            .peek((key, value) -> log.info(String.format("Brand DELETED: %s", key)));
+        
+        createBrand.to(BRANDS_TOPIC, Produced.with(Serdes.String(), specificBrandProto));
+        deleteBrand.to(BRANDS_TOPIC, Produced.with(Serdes.String(), specificBrandProto));
 
         KStream<String, Product> inputProductsStream = builder
             .stream(INPUT_PRODUCTS_TOPIC, Consumed.with(Serdes.String(), specificProductProto));
 
-            KStream<String, Product> inputProducts = inputProductsStream
+        KStream<String, Product> inputProducts = inputProductsStream
             .filter((key, value) -> value != null)
             .selectKey((key, value) -> value.getBrand().getName())
             .join(brandsTable, (product, brand) -> 
@@ -201,15 +227,15 @@ class ProductService {
             })
             .filter((key, value) -> value.getStatus() == Status.PENDING)
             .mapValues(product -> {
-                log.info("Create: ");
-                log.info(product.toString());
                 Builder productBuilder = product.toBuilder();  
-
+                
                 String seed = product.getName() + ":" + product.getBrand().getName();
                 final String uuid = UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8)).toString();
-
+                
                 productBuilder.setId(uuid).setStatus(Status.CREATED);
-
+                
+                log.info("Product CREATED: ");
+                log.info(product.toString());
                 return productBuilder.build();
 
             });
